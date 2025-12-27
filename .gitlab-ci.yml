@@ -1,0 +1,29 @@
+# BAD: Используем latest (непредсказуемая версия)
+image: node:latest
+
+stages:
+  - build
+  - test
+  - deploy
+
+build_job:
+  stage: build
+  script:
+    # BAD: Нет кэша, npm install качает пол-интернета каждый раз
+    - npm install
+    - npm run build
+
+test_job:
+  stage: test
+  # BAD: Разрешаем падать. Если тесты не прошли, мы все равно идем деплоить!
+  allow_failure: true
+  script:
+    - npm run test
+
+deploy_job:
+  stage: deploy
+  script:
+    # BAD: Отключаем проверку SSL (Man-in-the-Middle атаки приветствуются)
+    - export GIT_SSL_NO_VERIFY=1
+    # BAD: Пароль и IP сервера прямо в коде!
+    - sshpass -p "rootpassword123" scp -o StrictHostKeyChecking=no ./dist root@192.168.1.50:/var/www/html
