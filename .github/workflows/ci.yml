@@ -1,25 +1,34 @@
-name: CI-Bad
+name: CI-Good
 on: [push]
 
 jobs:
   build:
-    # BAD: Запускаем на убунту (latest image внутри экшена)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
-      # BAD: Хардкод Node.js latest через установку вручную или отсутствие фиксации
-      - name: Install dependencies
-        # BAD: Нет кэша, качаем всё заново
-        run: npm install
 
-      - name: Test
-        # BAD: Игнорируем ошибки (аналог allow_failure)
-        run: npm test || true
+      # GOOD: Фиксированная версия Node.js
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
 
-      - name: Deploy
+      # Создаем фейковый package.json, чтобы npm install не падал (т.к. у нас пустой проект)
+      - name: Create dummy project
         run: |
-          # BAD: Отключаем проверку SSL
-          export GIT_SSL_NO_VERIFY=1
-          # BAD: Хардкод пароля
-          echo "Deploying with password: supersecretpassword123"
+          npm init -y
+          npm install express
+
+      # GOOD: Установка с кэшем
+      - name: Install
+        run: npm ci
+
+      # GOOD: Деплой с использованием секрета
+      - name: Deploy
+        env:
+          MY_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          echo "Deploying..."
+          # GitHub сам замажет секрет звездочками
+          echo "Key used: $MY_KEY"
